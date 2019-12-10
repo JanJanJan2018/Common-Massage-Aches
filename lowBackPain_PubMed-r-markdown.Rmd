@@ -1,0 +1,203 @@
+---
+title: "Low Back Pain PubMed"
+author: "Janis Corona"
+date: "12/9/2019"
+output:
+  pdf_document: default
+  html_document: default
+  word_document: default
+---
+
+## This script takes ten articles from the abstracts on earache articles from NCBI's PubMed
+
+
+This creates a directory to stem the abstracts and preprocess from the csv file
+into a corpus of 20 files in a folder called Earache.
+```{r, error=FALSE, message=FALSE, warning=FALSE}
+Auto <- read.csv('LB_SI_joint_pain_PubMed_Abstracts.csv', sep=',',
+                 header=TRUE, na.strings=c('',' '))
+
+auto <- Auto[complete.cases(Auto$abstract),]
+
+
+dir.create('./LowBackPain')
+
+ea <- as.character(auto$abstract)
+setwd('./LowBackPain')
+
+for (j in 1:length(ea)){
+  write(ea[j], paste(paste('EA',j, sep='.'), '.txt', sep=''))
+}
+setwd('../')
+
+
+```
+
+This code preprocesses and stems the corpus
+```{r, error=FALSE, warning=FALSE, message=FALSE}
+library(tm)
+library(SnowballC)
+library(wordcloud)
+library(ggplot2)
+
+LowBackPain <- Corpus(DirSource("LowBackPain"))
+
+
+LowBackPain
+
+#LowBackPain <- tm_map(LowBackPain, removePunctuation)
+#LowBackPain <- tm_map(LowBackPain, removeNumbers)
+LowBackPain <- tm_map(LowBackPain, tolower)
+LowBackPain <- tm_map(LowBackPain, removeWords, stopwords("english"))
+LowBackPain <- tm_map(LowBackPain, stripWhitespace)
+LowBackPain <- tm_map(LowBackPain, stemDocument)
+
+dtmLowBackPain <- DocumentTermMatrix(LowBackPain)
+
+freq <- colSums(as.matrix(dtmLowBackPain))
+
+```
+
+This code orders words stemmed by frequency and finds input correlations
+```{r}
+FREQ <- data.frame(freq)
+ord <- order(freq, decreasing=TRUE)
+
+freq[head(ord, 25)]
+
+
+```
+
+
+```{r}
+findAssocs(dtmLowBackPain, "patient", corlimit=0.7)
+
+```
+
+
+```{r}
+findAssocs(dtmLowBackPain, "pain", corlimit=0.62)
+```
+
+
+```{r}
+wf <- data.frame(word=names(freq), freq=freq)
+p <- ggplot(subset(wf, freq>16), aes(word, freq))
+p <- p + geom_bar(stat= 'identity') 
+p <- p + theme(axis.text.x=element_text(angle=90, hjust=1)) 
+p
+
+```
+
+
+```{r}
+wordcloud(names(freq), freq, min.freq=10,colors=brewer.pal(3,'Dark2'))
+
+```
+
+
+```{r}
+wordcloud(names(freq), freq, max.words=30,colors=brewer.pal(6,'Dark2'))
+
+```
+
+### The above stemmed the corpus, this will lemmatize the original csv file
+and add the field to the table and write out to csv, followed by plot the 
+word count frequencies that were lemmatized and the word clouds
+
+```{r, error=FALSE, message=FALSE, warning=FALSE}
+library(textstem)
+
+lemma <- lemmatize_strings(auto$abstract, dictionary=lexicon::hash_lemmas)
+
+Lemma <- as.data.frame(lemma)
+Lemma <- cbind(Lemma, auto)
+
+colnames(Lemma) <- c('lemmatizedAbstract','abstract', 'source')
+
+write.csv(Lemma, 'LemmatizedLowBackPain.csv', row.names=FALSE)
+
+```
+
+```{r, error=FALSE, message=FALSE, warning=FALSE}
+dir.create('./LowBackPain-Lemma')
+
+ea <- as.character(Lemma$lemmatizedAbstract)
+setwd('./LowBackPain-Lemma')
+
+for (j in 1:length(ea)){
+  write(ea[j], paste(paste('EAL',j, sep='.'), '.txt', sep=''))
+}
+setwd('../')
+
+```
+
+```{r, error=FALSE, message=FALSE, warning=FALSE}
+library(tm)
+library(SnowballC)
+library(wordcloud)
+library(ggplot2)
+
+```
+
+
+
+```{r}
+LowBackPain <- Corpus(DirSource("LowBackPain-Lemma"))
+
+LowBackPain
+
+#LowBackPain <- tm_map(LowBackPain, removePunctuation)
+#LowBackPain <- tm_map(LowBackPain, removeNumbers)
+LowBackPain <- tm_map(LowBackPain, tolower)
+LowBackPain <- tm_map(LowBackPain, removeWords, stopwords("english"))
+LowBackPain <- tm_map(LowBackPain, stripWhitespace)
+
+dtmLowBackPain <- DocumentTermMatrix(LowBackPain)
+dtmLowBackPain
+
+```
+
+```{r}
+freq <- colSums(as.matrix(dtmLowBackPain))
+
+FREQ <- data.frame(freq)
+ord <- order(freq, decreasing=TRUE)
+
+freq[head(ord, 25)]
+
+```
+
+
+```{r}
+patient <- as.data.frame(findAssocs(dtmLowBackPain, "patient", corlimit=0.62))
+
+result <- as.data.frame(findAssocs(dtmLowBackPain, "result", corlimit=0.56))
+
+
+treatment <- as.data.frame(findAssocs(dtmLowBackPain, "treatment", corlimit=0.65))
+
+patient
+result
+treatment
+```
+
+```{r, width=500, height=500}
+wf <- data.frame(word=names(freq), freq=freq)
+p <- ggplot(subset(wf, freq>15), aes(word, freq))
+p <- p + geom_bar(stat= 'identity') 
+p <- p + theme(axis.text.x=element_text(angle=90, hjust=1)) 
+p
+
+```
+
+```{r}
+wordcloud(names(freq), freq, min.freq=10,colors=brewer.pal(3,'Dark2'))
+
+```
+
+```{r}
+wordcloud(names(freq), freq, max.words=40,colors=brewer.pal(6,'Dark2'))
+
+```
+

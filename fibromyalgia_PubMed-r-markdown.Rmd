@@ -1,0 +1,203 @@
+---
+title: "Fibromyalgia PubMed"
+author: "Janis Corona"
+date: "12/9/2019"
+output:
+  pdf_document: default
+  html_document: default
+  word_document: default
+---
+
+## This script takes ten articles from the abstracts on earache articles from NCBI's PubMed
+
+
+This creates a directory to stem the abstracts and preprocess from the csv file
+into a corpus of 20 files in a folder called Earache.
+```{r, error=FALSE, message=FALSE, warning=FALSE}
+Auto <- read.csv('Fibromyalgia_PubMed_Abstracts.csv', sep=',',
+                 header=TRUE, na.strings=c('',' '))
+
+auto <- Auto[complete.cases(Auto$abstract),]
+
+
+dir.create('./Fibromyalgias')
+
+ea <- as.character(auto$abstract)
+setwd('./Fibromyalgias')
+
+for (j in 1:length(ea)){
+  write(ea[j], paste(paste('EA',j, sep='.'), '.txt', sep=''))
+}
+setwd('../')
+
+
+```
+
+This code preprocesses and stems the corpus
+```{r, error=FALSE, warning=FALSE, message=FALSE}
+library(tm)
+library(SnowballC)
+library(wordcloud)
+library(ggplot2)
+
+Fibromyalgias <- Corpus(DirSource("Fibromyalgias"))
+
+
+Fibromyalgias
+
+#Fibromyalgias <- tm_map(Fibromyalgias, removePunctuation)
+#Fibromyalgias <- tm_map(Fibromyalgias, removeNumbers)
+Fibromyalgias <- tm_map(Fibromyalgias, tolower)
+Fibromyalgias <- tm_map(Fibromyalgias, removeWords, stopwords("english"))
+Fibromyalgias <- tm_map(Fibromyalgias, stripWhitespace)
+Fibromyalgias <- tm_map(Fibromyalgias, stemDocument)
+
+dtmFibromyalgias <- DocumentTermMatrix(Fibromyalgias)
+
+freq <- colSums(as.matrix(dtmFibromyalgias))
+
+```
+
+This code orders words stemmed by frequency and finds input correlations
+```{r}
+FREQ <- data.frame(freq)
+ord <- order(freq, decreasing=TRUE)
+
+freq[head(ord, 25)]
+
+
+```
+
+
+```{r}
+findAssocs(dtmFibromyalgias, "sleep", corlimit=0.7)
+
+```
+
+
+```{r}
+findAssocs(dtmFibromyalgias, "pain", corlimit=0.5)
+```
+
+
+```{r}
+wf <- data.frame(word=names(freq), freq=freq)
+p <- ggplot(subset(wf, freq>16), aes(word, freq))
+p <- p + geom_bar(stat= 'identity') 
+p <- p + theme(axis.text.x=element_text(angle=90, hjust=1)) 
+p
+
+```
+
+
+```{r}
+wordcloud(names(freq), freq, min.freq=12,colors=brewer.pal(1,'Dark2'))
+
+```
+
+
+```{r}
+wordcloud(names(freq), freq, max.words=30,colors=brewer.pal(6,'Dark2'))
+
+```
+
+### The above stemmed the corpus, this will lemmatize the original csv file
+and add the field to the table and write out to csv, followed by plot the 
+word count frequencies that were lemmatized and the word clouds
+
+```{r, error=FALSE, message=FALSE, warning=FALSE}
+library(textstem)
+
+lemma <- lemmatize_strings(auto$abstract, dictionary=lexicon::hash_lemmas)
+
+Lemma <- as.data.frame(lemma)
+Lemma <- cbind(Lemma, auto)
+
+colnames(Lemma) <- c('lemmatizedAbstract','abstract', 'source')
+
+write.csv(Lemma, 'LemmatizedFibromyalgias.csv', row.names=FALSE)
+
+```
+
+```{r, error=FALSE, message=FALSE, warning=FALSE}
+dir.create('./Fibromyalgias-Lemma')
+
+ea <- as.character(Lemma$lemmatizedAbstract)
+setwd('./Fibromyalgias-Lemma')
+
+for (j in 1:length(ea)){
+  write(ea[j], paste(paste('EAL',j, sep='.'), '.txt', sep=''))
+}
+setwd('../')
+
+```
+
+```{r, error=FALSE, message=FALSE, warning=FALSE}
+library(tm)
+library(SnowballC)
+library(wordcloud)
+library(ggplot2)
+
+```
+
+
+
+```{r}
+Fibromyalgias <- Corpus(DirSource("Fibromyalgias-Lemma"))
+
+Fibromyalgias
+
+#Fibromyalgias <- tm_map(Fibromyalgias, removePunctuation)
+#Fibromyalgias <- tm_map(Fibromyalgias, removeNumbers)
+Fibromyalgias <- tm_map(Fibromyalgias, tolower)
+Fibromyalgias <- tm_map(Fibromyalgias, removeWords, stopwords("english"))
+Fibromyalgias <- tm_map(Fibromyalgias, stripWhitespace)
+
+dtmFibromyalgias <- DocumentTermMatrix(Fibromyalgias)
+dtmFibromyalgias
+
+```
+
+```{r}
+freq <- colSums(as.matrix(dtmFibromyalgias))
+
+FREQ <- data.frame(freq)
+ord <- order(freq, decreasing=TRUE)
+
+freq[head(ord, 25)]
+
+```
+
+
+```{r}
+patient <- as.data.frame(findAssocs(dtmFibromyalgias, "patient", corlimit=0.70))
+
+pain <- as.data.frame(findAssocs(dtmFibromyalgias, "pain", corlimit=0.75))
+
+
+treatment <- as.data.frame(findAssocs(dtmFibromyalgias, "treatment", corlimit=0.55))
+
+patient
+pain
+treatment
+```
+
+```{r, width=500, height=500}
+wf <- data.frame(word=names(freq), freq=freq)
+p <- ggplot(subset(wf, freq>16), aes(word, freq))
+p <- p + geom_bar(stat= 'identity') 
+p <- p + theme(axis.text.x=element_text(angle=90, hjust=1)) 
+p
+
+```
+
+```{r}
+wordcloud(names(freq), freq, min.freq=12,colors=brewer.pal(2,'Dark2'))
+
+```
+
+```{r}
+wordcloud(names(freq), freq, max.words=28,colors=brewer.pal(1,'Dark2'))
+
+```
+

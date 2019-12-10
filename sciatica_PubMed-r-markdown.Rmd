@@ -1,0 +1,209 @@
+---
+title: "Sciatica PubMed"
+author: "Janis Corona"
+date: "12/9/2019"
+output:
+  pdf_document: default
+  html_document: default
+  word_document: default
+---
+
+## This script takes ten articles from the abstracts on earache articles from NCBI's PubMed
+
+
+This creates a directory to stem the abstracts and preprocess from the csv file
+into a corpus of 20 files in a folder called Earache.
+```{r, error=FALSE, message=FALSE, warning=FALSE}
+Auto <- read.csv('sciatic_PubMed_Abstracts.csv', sep=',',
+                 header=TRUE, na.strings=c('',' '))
+
+auto <- Auto[complete.cases(Auto$abstract),]
+
+
+dir.create('./Sciatica')
+
+ea <- as.character(auto$abstract)
+setwd('./Sciatica')
+
+for (j in 1:length(ea)){
+  write(ea[j], paste(paste('EA',j, sep='.'), '.txt', sep=''))
+}
+setwd('../')
+
+
+```
+
+This code preprocesses and stems the corpus
+```{r, error=FALSE, warning=FALSE, message=FALSE}
+library(tm)
+library(SnowballC)
+library(wordcloud)
+library(ggplot2)
+
+Sciatica <- Corpus(DirSource("Sciatica"))
+
+
+Sciatica
+
+#Sciatica <- tm_map(Sciatica, removePunctuation)
+#Sciatica <- tm_map(Sciatica, removeNumbers)
+Sciatica <- tm_map(Sciatica, tolower)
+Sciatica <- tm_map(Sciatica, removeWords, stopwords("english"))
+Sciatica <- tm_map(Sciatica, stripWhitespace)
+Sciatica <- tm_map(Sciatica, stemDocument)
+
+dtmSciatica <- DocumentTermMatrix(Sciatica)
+
+freq <- colSums(as.matrix(dtmSciatica))
+
+```
+
+This code orders words stemmed by frequency and finds input correlations
+```{r}
+FREQ <- data.frame(freq)
+ord <- order(freq, decreasing=TRUE)
+
+freq[head(ord, 25)]
+
+
+```
+
+
+```{r}
+findAssocs(dtmSciatica, "effect", corlimit=0.7)
+
+```
+
+
+```{r}
+findAssocs(dtmSciatica, "assess", corlimit=0.5)
+```
+
+```{r}
+findAssocs(dtmSciatica, "piriformi", corlimit=0.5)
+```
+
+```{r}
+wf <- data.frame(word=names(freq), freq=freq)
+p <- ggplot(subset(wf, freq>12), aes(word, freq))
+p <- p + geom_bar(stat= 'identity') 
+p <- p + theme(axis.text.x=element_text(angle=90, hjust=1)) 
+p
+
+```
+
+
+```{r}
+wordcloud(names(freq), freq, min.freq=10,colors=brewer.pal(3,'Dark2'))
+
+```
+
+
+```{r}
+wordcloud(names(freq), freq, max.words=30,colors=brewer.pal(6,'Dark2'))
+
+```
+
+### The above stemmed the corpus, this will lemmatize the original csv file
+and add the field to the table and write out to csv, followed by plot the 
+word count frequencies that were lemmatized and the word clouds
+
+```{r, error=FALSE, message=FALSE, warning=FALSE}
+library(textstem)
+
+lemma <- lemmatize_strings(auto$abstract, dictionary=lexicon::hash_lemmas)
+
+Lemma <- as.data.frame(lemma)
+Lemma <- cbind(Lemma, auto)
+
+colnames(Lemma) <- c('lemmatizedAbstract','abstract', 'source')
+
+write.csv(Lemma, 'LemmatizedSciatica.csv', row.names=FALSE)
+
+```
+
+```{r, error=FALSE, message=FALSE, warning=FALSE}
+dir.create('./Sciatica-Lemma')
+
+ea <- as.character(Lemma$lemmatizedAbstract)
+setwd('./Sciatica-Lemma')
+
+for (j in 1:length(ea)){
+  write(ea[j], paste(paste('EAL',j, sep='.'), '.txt', sep=''))
+}
+setwd('../')
+
+```
+
+```{r, error=FALSE, message=FALSE, warning=FALSE}
+library(tm)
+library(SnowballC)
+library(wordcloud)
+library(ggplot2)
+
+```
+
+
+
+```{r}
+Sciatica <- Corpus(DirSource("Sciatica-Lemma"))
+
+Sciatica
+
+#Sciatica <- tm_map(Sciatica, removePunctuation)
+#Sciatica <- tm_map(Sciatica, removeNumbers)
+Sciatica <- tm_map(Sciatica, tolower)
+Sciatica <- tm_map(Sciatica, removeWords, stopwords("english"))
+Sciatica <- tm_map(Sciatica, stripWhitespace)
+
+dtmSciatica <- DocumentTermMatrix(Sciatica)
+dtmSciatica
+
+```
+
+```{r}
+freq <- colSums(as.matrix(dtmSciatica))
+
+FREQ <- data.frame(freq)
+ord <- order(freq, decreasing=TRUE)
+
+freq[head(ord, 25)]
+
+```
+
+
+```{r}
+piriformis <- as.data.frame(findAssocs(dtmSciatica, "piriformis", corlimit=0.70))
+
+ultrasound <- as.data.frame(findAssocs(dtmSciatica, "ultrasound", corlimit=0.5))
+
+
+am1710 <- as.data.frame(findAssocs(dtmSciatica, "am1710", corlimit=0.55))
+
+ca8 <- as.data.frame(findAssocs(dtmSciatica, "ca8", corlimit=0.85))
+
+piriformis
+ultrasound
+am1710
+ca8
+```
+
+```{r, width=500, height=500}
+wf <- data.frame(word=names(freq), freq=freq)
+p <- ggplot(subset(wf, freq>11), aes(word, freq))
+p <- p + geom_bar(stat= 'identity') 
+p <- p + theme(axis.text.x=element_text(angle=90, hjust=1)) 
+p
+
+```
+
+```{r}
+wordcloud(names(freq), freq, min.freq=10,colors=brewer.pal(3,'Dark2'))
+
+```
+
+```{r}
+wordcloud(names(freq), freq, max.words=40,colors=brewer.pal(6,'Dark2'))
+
+```
+
