@@ -8,11 +8,11 @@ output:
   word_document: default
 ---
 
-## This script takes ten articles from the abstracts on earache articles from NCBI's PubMed
+## This script takes ten articles from the abstracts on nueroma articles from NCBI's PubMed
 
 
 This creates a directory to stem the abstracts and preprocess from the csv file
-into a corpus of 20 files in a folder called Earache.
+into a corpus of 20 files in a folder called nueromas.
 ```{r, error=FALSE, message=FALSE, warning=FALSE}
 Auto <- read.csv('neuroma_PubMed_abstracts.csv', sep=',',
                  header=TRUE, na.strings=c('',' '))

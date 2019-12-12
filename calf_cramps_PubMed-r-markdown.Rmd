@@ -3,16 +3,16 @@ title: "Calf Cramps PubMed"
 author: "Janis Corona"
 date: "12/9/2019"
 output:
-  pdf_document: default
-  html_document: default
   word_document: default
+  html_document: default
+  pdf_document: default
 ---
 
-## This script takes ten articles from the abstracts on earache articles from NCBI's PubMed
+## This script takes ten articles from the abstracts on calf cramp articles from NCBI's PubMed
 
 
 This creates a directory to stem the abstracts and preprocess from the csv file
-into a corpus of 20 files in a folder called Earache.
+into a corpus of 20 files in a folder called Calf_cramps.
 ```{r, error=FALSE, message=FALSE, warning=FALSE}
 Auto <- read.csv('calf_cramps_PubMed_abstracts.csv', sep=',',
                  header=TRUE, na.strings=c('',' '))
