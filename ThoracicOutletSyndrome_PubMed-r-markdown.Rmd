@@ -1,0 +1,205 @@
+---
+title: "Thoracic Outlet Syndrome Articles and Abstracts"
+author: "Janis Corona"
+date: "12/12/2019"
+output:
+  html_document: default
+  word_document: default
+  pdf_document: default
+---
+
+## This script takes articles or abstracts on Thoracic Outlet Syndrome-TOS from PubMed or Google Scholar
+
+
+This creates a directory to stem the abstracts and preprocess from the csv file
+into a corpus of files in a folder called TOS.
+```{r, error=FALSE, message=FALSE, warning=FALSE}
+Auto <- read.csv('ThoracicOutletSyndrome.csv', sep=',',
+                 header=TRUE, na.strings=c('',' ','NA'))
+```
+
+```{r, error=FALSE, message=FALSE, warning=FALSE}
+auto <- Auto[complete.cases(Auto$article),]
+
+
+dir.create('./TOS')
+
+ea <- as.character(auto$article)
+setwd('./TOS')
+
+for (j in 1:length(ea)){
+  write(ea[j], paste(paste('EA',j, sep='.'), '.txt', sep=''))
+}
+setwd('../')
+
+
+```
+
+This code preprocesses and stems the corpus
+```{r, error=FALSE, warning=FALSE, message=FALSE}
+library(tm)
+library(SnowballC)
+library(wordcloud)
+library(ggplot2)
+
+TOS <- Corpus(DirSource("TOS"))
+
+
+TOS
+
+TOS <- tm_map(TOS, removePunctuation)
+#TOS <- tm_map(TOS, removeNumbers)
+TOS <- tm_map(TOS, tolower)
+TOS <- tm_map(TOS, removeWords, stopwords("english"))
+TOS <- tm_map(TOS, stripWhitespace)
+TOS <- tm_map(TOS, stemDocument)
+
+dtmTOS <- DocumentTermMatrix(TOS)
+
+freq <- colSums(as.matrix(dtmTOS))
+
+```
+
+This code orders words stemmed by frequency and finds input correlations
+```{r}
+FREQ <- data.frame(freq)
+ord <- order(freq, decreasing=TRUE)
+
+freq[head(ord, 25)]
+
+
+```
+
+
+```{r}
+findAssocs(dtmTOS, "patient", corlimit=0.7)
+
+```
+
+
+```{r}
+findAssocs(dtmTOS, "pain", corlimit=0.9)
+```
+
+
+```{r}
+wf <- data.frame(word=names(freq), freq=freq)
+p <- ggplot(subset(wf, freq>50), aes(word, freq))
+p <- p + geom_bar(stat= 'identity') 
+p <- p + theme(axis.text.x=element_text(angle=90, hjust=1)) 
+p
+
+```
+
+
+```{r}
+wordcloud(names(freq), freq, min.freq=48,colors=brewer.pal(3,'Dark2'))
+
+```
+
+
+```{r}
+wordcloud(names(freq), freq, max.words=30,colors=brewer.pal(6,'Dark2'))
+
+```
+
+### The above stemmed the corpus, this will lemmatize the original csv file
+and add the field to the table and write out to csv, followed by plot the 
+word count frequencies that were lemmatized and the word clouds
+
+```{r, error=FALSE, message=FALSE, warning=FALSE}
+library(textstem)
+
+lemma <- lemmatize_strings(auto$article, dictionary=lexicon::hash_lemmas)
+
+Lemma <- as.data.frame(lemma)
+Lemma <- cbind(Lemma, auto)
+
+colnames(Lemma) <- c('lemmatizedAbstract','article', 'source')
+
+write.csv(Lemma, 'LemmatizedTOS.csv', row.names=FALSE)
+
+```
+
+```{r, error=FALSE, message=FALSE, warning=FALSE}
+dir.create('./TOS-Lemma')
+
+ea <- as.character(Lemma$lemmatizedAbstract)
+setwd('./TOS-Lemma')
+
+for (j in 1:length(ea)){
+  write(ea[j], paste(paste('EAL',j, sep='.'), '.txt', sep=''))
+}
+setwd('../')
+
+```
+
+```{r, error=FALSE, message=FALSE, warning=FALSE}
+library(tm)
+library(SnowballC)
+library(wordcloud)
+library(ggplot2)
+
+```
+
+
+
+```{r}
+TOS <- Corpus(DirSource("TOS-Lemma"))
+
+TOS
+
+TOS <- tm_map(TOS, removePunctuation)
+#TOS <- tm_map(TOS, removeNumbers)
+TOS <- tm_map(TOS, tolower)
+TOS <- tm_map(TOS, removeWords, stopwords("english"))
+TOS <- tm_map(TOS, stripWhitespace)
+
+dtmTOS <- DocumentTermMatrix(TOS)
+dtmTOS
+
+```
+
+```{r}
+freq <- colSums(as.matrix(dtmTOS))
+
+FREQ <- data.frame(freq)
+ord <- order(freq, decreasing=TRUE)
+
+freq[head(ord, 25)]
+
+```
+
+
+```{r}
+pain <- as.data.frame(findAssocs(dtmTOS, "pain", corlimit=0.9))
+
+symptom <- as.data.frame(findAssocs(dtmTOS, "symptom", corlimit=0.95))
+
+
+treatment <- as.data.frame(findAssocs(dtmTOS, "treatment", corlimit=0.61))
+
+pain
+symptom
+treatment
+```
+
+```{r, width=500, height=500}
+wf <- data.frame(word=names(freq), freq=freq)
+p <- ggplot(subset(wf, freq>50), aes(word, freq))
+p <- p + geom_bar(stat= 'identity') 
+p <- p + theme(axis.text.x=element_text(angle=90, hjust=1)) 
+p
+
+```
+
+```{r}
+wordcloud(names(freq), freq, min.freq=50,colors=brewer.pal(3,'Dark2'))
+
+```
+
+```{r}
+wordcloud(names(freq), freq, max.words=30,colors=brewer.pal(6,'Dark2'))
+
+```
+
